@@ -20,11 +20,12 @@ import java.util.regex.Pattern;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.client.utils.URLEncodedUtils;
-
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
 
 public class psleciClass {
     
-    public static final String mServer = "http://psleci.nic.in";
+    public static final String mServer = "YOU-KNOW-THE-SITE";
     
     public static final String script = "default.aspx";
     
@@ -110,13 +111,15 @@ public class psleciClass {
         output.close();
 
         BufferedReader b = new BufferedReader(new InputStreamReader (urlConn.getInputStream()));
-        
         //urlConn.disconnect();
         
         return b;        
     }
   
-
+    static BufferedReader getMapData () throws IOException {
+       return getDataFromSite(script1, "application/json", "");
+    }
+    
     static void dumpToFile (String file, BufferedReader b) throws IOException {
         File newFile = new File(file);
         FileOutputStream fop = new FileOutputStream(newFile);
@@ -198,6 +201,7 @@ public class psleciClass {
     public static void main (String [] args) throws IOException {
         BufferedReader data = null;
         String postData = null;
+        BufferedReader mapData = null;
         
         data = getDataFromSite(script, "application/x-www-form-urlencoded", "");
 
@@ -205,19 +209,16 @@ public class psleciClass {
         data = getDataFromSite(script, "application/x-www-form-urlencoded", postData);
 
         postData = buildPostData (data, "ddlDistrict");
-        data = getDataFromSite(script1, "application/json", "");
         data = getDataFromSite(script, "application/x-www-form-urlencoded", postData);
 
         postData = buildPostData (data, "ddlAC");
-        data = getDataFromSite(script1, "application/json", "");
         data = getDataFromSite(script, "application/x-www-form-urlencoded", postData);
 
         postData = buildPostData (data, "");
-        data = getDataFromSite(script1, "application/json", "");
         data = getDataFromSite(script, "application/x-www-form-urlencoded", postData);
 
         /* Map Data is output here */
-        data = getDataFromSite(script1, "application/json", "");
-        dumpToFile("temp1.json", data);
+        mapData = getMapData();
+        dumpToFile("temp1.json", mapData);
     }
 }
