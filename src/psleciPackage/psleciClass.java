@@ -179,6 +179,7 @@ public class psleciClass {
             Logger.getAnonymousLogger().log(Level.INFO, districts.toString());
 
             /* Assembly Constituency */
+            acCode = "-1";
 
             for (NameValuePair nvp1 : districts) {
 
