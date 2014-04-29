@@ -10,46 +10,37 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-
 import org.apache.http.NameValuePair;
-import org.apache.http.ProtocolException;
 import org.apache.http.client.utils.URLEncodedUtils;
 import org.apache.http.message.BasicNameValuePair;
-import org.jsoup.Connection;
-import org.jsoup.Connection.Method;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 public class psleciClass {
-    
-    public static final String mServer = "http://psleci.nic.in";
-    
+
+    public static final String mServer = "YOU-KNOW-THE-SITE";
+
     public static final String script = "default.aspx";
-    
+
     public static final String script1 = "Gservice.asmx/GetGoogleObject";
 
     public static final String et = "__EVENTTARGET";
-    public static final String dps = "ddlPS";
-        
-    public static final String mCky = "ASP.NET_SessionId=hsfura55tmr5gd45zovpkejq";
-    
 
-    static Document getDocFromSite (String postData) throws IOException, Exception {
+    /* Random string as cookie */
+    public static final String mCky = "ASP.NET_SessionId=hsfura55tmr5gd45zovpkejw";
 
-       // urlConn.setRequestProperty("Cookie", cookie);
-       // urlConn.setRequestProperty ("Content-Type", type);
-        
+
+    static BufferedReader getDataFromSite (String scrpt, String postData, String type) throws IOException, Exception {
+
         URL url = null;
         try {
-            url = new URL(mServer + "/" + script);
+            url = new URL(mServer + "/" + scrpt);
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
@@ -57,89 +48,65 @@ public class psleciClass {
 
         urlConn.setDoInput (true);
         urlConn.setDoOutput (true);
-        //urlConn.setUseCaches (false);
 
         urlConn.setRequestProperty("Cookie", mCky);
-        urlConn.setRequestProperty ("Content-Type", "application/x-www-form-urlencoded");
-        
+        urlConn.setRequestProperty ("Content-Type", type);
+
         urlConn.setRequestMethod("POST");
-                
+
         urlConn.connect();
 
         DataOutputStream output = new DataOutputStream(urlConn.getOutputStream());
 
-        // Construct the POST data.
         // Send the request data.
         output.writeBytes(postData);
         output.flush();
         output.close();
 
         BufferedReader b = new BufferedReader(new InputStreamReader (urlConn.getInputStream()));
-        //urlConn.disconnect();
+
+        return b;
+    }
+
+    static Document getDocFromSite (String postData) throws IOException, Exception {
+        BufferedReader b = getDataFromSite(script, postData, "application/x-www-form-urlencoded");
         StringBuilder br = new StringBuilder();
         String line = null;
-        
+
         while (null != (line = b.readLine())) {
             br.append(line);
         }
         Document doc = Jsoup.parse(br.toString());
-        
-        return doc;        
+
+        return doc;
     }
 
     static void dumpToFile (String file, String data) throws IOException {
-        FileOutputStream fop = new FileOutputStream(new File(file));      
+        FileOutputStream fop = new FileOutputStream(new File(file));
         fop.write(data.getBytes());
         fop.flush();
         fop.close();
     }
 
     static void dumpMapData (String file) throws Exception {
-        URL url = null;
-        try {
-            url = new URL(mServer + "/" + script1);
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-        HttpURLConnection urlConn = (HttpURLConnection) url.openConnection();
-
-        urlConn.setDoInput (true);
-        urlConn.setDoOutput (true);
-        //urlConn.setUseCaches (false);
-
-        urlConn.setRequestProperty("Cookie", mCky);
-        urlConn.setRequestProperty ("Content-Type", "application/json");
-        
-        urlConn.setRequestMethod("POST");
-                
-        urlConn.connect();
-
-        DataOutputStream output = new DataOutputStream(urlConn.getOutputStream());
-
-        // Construct the POST data.
-        // Send the request data.
-        output.writeBytes("");
-        output.flush();
-        output.close();
-
-        BufferedReader b = new BufferedReader(new InputStreamReader (urlConn.getInputStream()));
-        //urlConn.disconnect();
+        BufferedReader b = getDataFromSite(script1, "", "application/json");
         StringBuilder br = new StringBuilder();
         String line = null;
-        
+
         while (null != (line = b.readLine())) {
             br.append(line);
         }
-        
-        dumpToFile(file + ".json", br.toString()); 
+
+        dumpToFile(file + ".json", br.toString());
     }
 
-    static List<NameValuePair> getInputElements(Document doc) {
+    static String buildPostData(Document doc, String target, String sCode, String dCode, String acCode, Boolean submit) {
         List<NameValuePair> list = new ArrayList<NameValuePair>();
+        String query = "";
 
-        /* Collect all the 'input' fields */            
+        /* Collect all the 'input' fields */
         Elements inputs = doc.select("input");
-    
+
         for (Element elm : inputs) {
             if (elm.attr("name").equals(et)) {
                 /* set it later */
@@ -149,10 +116,22 @@ public class psleciClass {
                 /* only required while submitting */
                 continue;
             }
-        
-            list.add(new BasicNameValuePair(elm.attr("name"), elm.attr("value")));            
+
+            list.add(new BasicNameValuePair(elm.attr("name"), elm.attr("value")));
         }
-        return list;
+
+        list.add(new BasicNameValuePair ("ddlState", sCode));
+        list.add(new BasicNameValuePair ("ddlDistrict", dCode));
+        list.add(new BasicNameValuePair ("ddlAC", acCode));
+        list.add(new BasicNameValuePair ("ddlPS", "ALL"));
+        list.add(new BasicNameValuePair (et, target));
+
+        if (submit) {
+            list.add(new BasicNameValuePair ("imgbtnFind.x", "26"));
+            list.add(new BasicNameValuePair ("imgbtnFind.y", "17"));
+        }
+        query = URLEncodedUtils.format(list, "UTF-8");
+        return query;
     }
 
 
@@ -175,89 +154,66 @@ public class psleciClass {
         }
         return list;
     }
-    
+
     static void getLocation() throws Exception {
-        
-        List<NameValuePair> params = new ArrayList<NameValuePair>();
-
         List<NameValuePair> states = new ArrayList<NameValuePair>();
-
+        String acCode = "-1";
+        String districtCode = "-1";
+        String query = "";
         Document doc = getDocFromSite("");
 
         states = getKeyDetails(doc, "ddlState");
 
-        Logger.getAnonymousLogger().log(Level.INFO, states.toString());
         for (NameValuePair nvp : states) {
             String stateCode = nvp.getName();
+
             List<NameValuePair> districts = new ArrayList<NameValuePair>();
 
-            params = getInputElements(doc);
-            params.add(new BasicNameValuePair ("ddlState", stateCode));
-            params.add(new BasicNameValuePair ("ddlDistrict", "-1"));
-            params.add(new BasicNameValuePair ("ddlAC", "-1"));
-            params.add(new BasicNameValuePair ("ddlPS", "ALL"));
-            params.add(new BasicNameValuePair (et, "ddlState"));
+            query = buildPostData(doc, "ddlState", stateCode, districtCode, acCode, false);
 
-            //query = URLEncodedUtils.format(params, "UTF-8");
-
-            Logger.getAnonymousLogger().log(Level.INFO, stateCode);
-            doc = getDocFromSite(URLEncodedUtils.format(params, "UTF-8"));
+            doc = getDocFromSite(query);
             districts = getKeyDetails(doc, "ddlDistrict");
             Logger.getAnonymousLogger().log(Level.INFO, districts.toString());
-            
-            /* Assembly Constituency */
-            for (NameValuePair nvp1 : districts) {
-                String districtCode = nvp1.getName();
-                List<NameValuePair> acList = new ArrayList<NameValuePair>();
-                params = null;  
-                params = getInputElements(doc);
-                params.add(new BasicNameValuePair ("ddlState", stateCode));
-                params.add(new BasicNameValuePair ("ddlDistrict", districtCode));
-                params.add(new BasicNameValuePair ("ddlAC", "-1"));
-                params.add(new BasicNameValuePair ("ddlPS", "ALL"));
-                params.add(new BasicNameValuePair (et, "ddlDistrict"));
 
-                doc = getDocFromSite(URLEncodedUtils.format(params, "UTF-8"));
-            
+            /* Assembly Constituency */
+
+            for (NameValuePair nvp1 : districts) {
+
+                districtCode = nvp1.getName();
+                List<NameValuePair> acList = new ArrayList<NameValuePair>();
+
+                query = buildPostData(doc, "ddlDistrict", stateCode, districtCode, acCode, false);
+
+                doc = getDocFromSite(query);
+
                 acList = getKeyDetails(doc, "ddlAC");
-                Logger.getAnonymousLogger().log(Level.INFO, acList.toString());
 
                 for (NameValuePair nvp2 : acList) {
-                    String acCode = nvp2.getName();
+                    acCode = nvp2.getName();
 
-                    params = getInputElements(doc);
-                    params.add(new BasicNameValuePair ("ddlState", stateCode));
-                    params.add(new BasicNameValuePair ("ddlDistrict", districtCode));
-                    params.add(new BasicNameValuePair ("ddlAC", acCode));
-                    params.add(new BasicNameValuePair ("ddlPS", "ALL"));
-                    params.add(new BasicNameValuePair (et, "ddlAC"));
-                    doc = getDocFromSite(URLEncodedUtils.format(params, "UTF-8"));
-                    
+                    query = buildPostData(doc, "ddlAC", stateCode, districtCode, acCode, false);
+
+                    doc = getDocFromSite(query);
+
                     /* Now Try to get the last Map Data */
-                    params = null;
-                    params = getInputElements(doc);
-                    params.add(new BasicNameValuePair ("ddlState", stateCode));
-                    params.add(new BasicNameValuePair ("ddlDistrict", districtCode));
-                    params.add(new BasicNameValuePair ("ddlAC", acCode));
-                    params.add(new BasicNameValuePair ("ddlPS", "ALL"));
-                    params.add(new BasicNameValuePair (et, ""));
-                    params.add(new BasicNameValuePair ("imgbtnFind.x", "26"));
-                    params.add(new BasicNameValuePair ("imgbtnFind.y", "17"));
-                    doc = getDocFromSite(URLEncodedUtils.format(params, "UTF-8"));
-                    params = null;
+                    query = buildPostData(doc, "", stateCode, districtCode, acCode, true);
+
+                    doc = getDocFromSite(query);
+
+                    Logger.getAnonymousLogger().log(Level.INFO, stateCode + "-" + districtCode + "-" + acCode);
+
                     /* Write the map data */
                     dumpMapData (stateCode + "-" + acCode);
-                    Logger.getAnonymousLogger().log(Level.INFO, stateCode + "-" + acCode);
                     Thread.sleep (1000);
-                }  
+                }
                 Thread.sleep (2000);
             }
-            break;
-        }    
+            Thread.sleep(3000);
+        }
     }
 
     public static void main (String [] args) throws Exception {
         getLocation();
-        Logger.getAnonymousLogger().log(Level.INFO, "Done");
+        Logger.getAnonymousLogger().log(Level.INFO, "Completed");
     }
 }
