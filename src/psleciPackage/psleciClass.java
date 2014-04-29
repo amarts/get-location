@@ -24,7 +24,7 @@ import org.jsoup.select.Elements;
 
 public class psleciClass {
 
-    public static final String mServer = "YOU-KNOW-THE-SITE";
+    public static final String mServer = "http://psleci.nic.in";
 
     public static final String script = "default.aspx";
 
@@ -166,8 +166,11 @@ public class psleciClass {
 
         for (NameValuePair nvp : states) {
             String stateCode = nvp.getName();
-
+            if (stateCode.equals("S01") || stateCode.equals("S02"))
+                continue;
             List<NameValuePair> districts = new ArrayList<NameValuePair>();
+            districtCode = "-1";
+            acCode = "-1";
 
             query = buildPostData(doc, "ddlState", stateCode, districtCode, acCode, false);
 
